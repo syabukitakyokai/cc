@@ -6,6 +6,7 @@ from typing import TypeAlias
 
 from .commands.init_db import main as init_db
 from .commands.import_csv import main as import_csv
+from .commands.report import main as report
 
 VERSION = "0.1.0"
 
@@ -42,6 +43,7 @@ def create_parser() -> argparse.ArgumentParser:
         help="Initialize database tables and views.",
     )
 
+    #
     import_parser = subparsers.add_parser(
         "import-csv",
         help="Import credit card CSV."
@@ -58,6 +60,17 @@ def create_parser() -> argparse.ArgumentParser:
     )
 
     import_parser.add_argument(
+        "--month",
+        required=True,
+    )
+
+    #
+    report_parser = subparsers.add_parser(
+        "report",
+        help="Show monthly summary report.",
+    )
+
+    report_parser.add_argument(
         "--month",
         required=True,
     )
@@ -94,6 +107,7 @@ def main() -> int:
 
     try:
 
+        #
         if arguments.command == "import-csv":
 
             return import_csv(
@@ -101,6 +115,11 @@ def main() -> int:
                 file_path=Path(arguments.file),
                 withdrawal_month=arguments.month,
             )
+        #
+        if arguments.command == "report":
+            return report(
+                withdrawal_month=arguments.month,
+        )
 
         handler = get_command_handler(
             arguments.command
