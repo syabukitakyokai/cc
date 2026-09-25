@@ -1,9 +1,11 @@
+from pathlib import Path
 import argparse
 from collections.abc import Callable
+from html import parser
 from typing import TypeAlias
 
 from .commands.init_db import main as init_db
-
+from .commands.import_csv import main as import_csv
 
 VERSION = "0.1.0"
 
@@ -40,8 +42,27 @@ def create_parser() -> argparse.ArgumentParser:
         help="Initialize database tables and views.",
     )
 
-    return parser
+    import_parser = subparsers.add_parser(
+        "import-csv",
+        help="Import credit card CSV."
+    )
 
+    import_parser.add_argument(
+        "--card",
+        required=True,
+    )
+
+    import_parser.add_argument(
+        "--file",
+        required=True,
+    )
+
+    import_parser.add_argument(
+        "--month",
+        required=True,
+    )
+
+    return parser
 
 def get_command_handler(
     command: str,
@@ -72,6 +93,15 @@ def main() -> int:
     arguments = parser.parse_args()
 
     try:
+
+        if arguments.command == "import-csv":
+
+            return import_csv(
+                card_code=arguments.card,
+                file_path=Path(arguments.file),
+                withdrawal_month=arguments.month,
+            )
+
         handler = get_command_handler(
             arguments.command
         )
