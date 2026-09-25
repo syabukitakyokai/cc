@@ -73,7 +73,7 @@ card-payment-manager/
 │  ├─ 202608/
 │  └─ 202609/
 ├─ db/
-│  └─ payment.db
+│  └─ cc.sqlite
 ├─ logs/
 ├─ sql/
 │  ├─ schema.sql
@@ -166,6 +166,65 @@ card-payment-manager/
 ## 8. データベース設計
 
 月は `YYYY-MM` 形式の `TEXT`、金額は浮動小数点誤差を避けるため**円単位の `INTEGER`**として保持します。
+
+### 8.0 ER図
+
+```mermaid
+erDiagram
+    BANK_ACCOUNT ||--o{ CARD_BANK_ACCOUNT_ASSIGNMENT : "口座紐付け"
+    CREDIT_CARD ||--o{ CARD_BANK_ACCOUNT_ASSIGNMENT : "口座紐付け"
+    CREDIT_CARD ||--o{ IMPORT_FILE : "CSV取込"
+    CREDIT_CARD ||--o{ CARD_USAGE : "利用明細"
+    IMPORT_FILE ||--o{ CARD_USAGE : "明細"
+
+    BANK_ACCOUNT {
+        INTEGER id PK
+        TEXT account_code UK
+        TEXT account_name
+        INTEGER enabled
+    }
+    CREDIT_CARD {
+        INTEGER id PK
+        TEXT card_code UK
+        TEXT card_name
+        TEXT importer_type
+        INTEGER enabled
+    }
+    CARD_BANK_ACCOUNT_ASSIGNMENT {
+        INTEGER id PK
+        INTEGER card_id FK
+        INTEGER bank_account_id FK
+        TEXT start_month
+        TEXT end_month
+    }
+    BANK_MONTHLY_PAYMENT {
+        INTEGER id PK
+        INTEGER bank_account_id FK
+        TEXT payment_name
+        INTEGER amount
+        TEXT start_month
+        TEXT end_month
+    }
+    IMPORT_FILE {
+        INTEGER id PK
+        INTEGER card_id FK
+        TEXT file_hash UK
+        TEXT withdrawal_month
+        TEXT status
+    }
+    CARD_USAGE {
+        INTEGER id PK
+        INTEGER card_id FK
+        INTEGER import_file_id FK
+        TEXT usage_date
+        TEXT withdrawal_month
+        TEXT merchant_name
+        INTEGER amount
+        TEXT detail_hash
+    }
+```
+
+`BANK_MONTHLY_PAYMENT.bank_account_id` は `BANK_ACCOUNT.id` を参照します。重複防止は `CARD_USAGE` の `card_id`、`withdrawal_month`、`detail_hash` の複合ユニークインデックスで行います。
 
 ### 8.1 `bank_account`
 
