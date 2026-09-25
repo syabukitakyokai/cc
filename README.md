@@ -4,7 +4,7 @@
 
 複数のクレジットカード利用明細CSVを明細単位で取り込み、カードごとに設定された引落口座へ集約する月次集計ツールです。
 
-カード利用明細には**利用日**と**請求月**を保持します。集計時は請求月を基準とし、銀行口座ごとに次の金額を合算して出力します。
+カード利用明細には**利用日**と**引落月**を保持します。集計時は引落月を基準とし、銀行口座ごとに次の金額を合算して出力します。
 
 - クレジットカード利用額
 - 口座に設定された月次の銀行引落額
@@ -104,7 +104,7 @@ card-payment-manager/
 - `input/<card_code>/imported/`: 正常取込済みCSV
 - フォルダ名の `card_code` をカード識別子として使用
 - ファイル名は原則 `YYYYMM.csv`
-- CSV内の請求月を正とし、ファイル名の年月は検証用として扱う
+- CSV内の引落月を正とし、ファイル名の年月は検証用として扱う
 
 正常終了後にCSVを `raw` から `imported` へ移動します。異常終了時は移動せず、ログへエラーを記録します。
 
@@ -113,8 +113,7 @@ card-payment-manager/
 | 用語 | 説明 |
 |---|---|
 | 利用日 | 商品またはサービスをカードで利用した日 |
-| 請求月 | カード会社が利用額を請求する対象月。本ツールのカード集計基準 |
-| 引落月 | 銀行口座から実際に引き落とされる月。初期版では請求月と同一として扱い、必要に応じて将来拡張する |
+| 引落月 | 銀行口座から実際に引き落とされる対象月。本ツールの集計基準 |
 | 銀行引落額 | カード利用料とは別に、銀行口座ごとに月単位で設定する金額 |
 | 適用月 | カードと口座の紐付けや銀行引落額が有効になる月 |
 
@@ -134,7 +133,7 @@ card-payment-manager/
 - 親フォルダのカードコードから対象カードを特定する
 - カード別インポーターでCSVを読み込む
 - 各明細を共通形式へ正規化する
-- 利用日、請求月、利用先、金額を保持する
+- 利用日、引落月、利用先、金額を保持する
 - ファイルハッシュを記録し、同一ファイルの再取込を防止する
 - 明細の一意キーを作成し、同一明細の重複登録を防止する
 - 1ファイル単位のトランザクションで登録する
@@ -143,7 +142,7 @@ card-payment-manager/
 
 ### 7.3 集計
 
-指定した請求月について、以下を集計します。
+指定した引落月について、以下を集計します。
 
 1. カード別利用額
 2. カードと銀行口座の月次紐付け
@@ -236,7 +235,7 @@ card-payment-manager/
 | original_file_name | TEXT | NOT NULL | 元ファイル名 |
 | relative_path | TEXT | NOT NULL | 入力時の相対パス |
 | file_hash | TEXT | NOT NULL, UNIQUE | SHA-256ハッシュ |
-| billing_month | TEXT | NULL | ファイルの対象請求月 |
+| withdrawal_month | TEXT | NULL | ファイルの対象引落月 |
 | status | TEXT | NOT NULL | `processing`、`success`、`failed` |
 | row_count | INTEGER | NOT NULL DEFAULT 0 | 読込行数 |
 | imported_count | INTEGER | NOT NULL DEFAULT 0 | 登録件数 |
@@ -252,7 +251,7 @@ card-payment-manager/
 | card_id | INTEGER | NOT NULL, FK | カードID |
 | import_file_id | INTEGER | NOT NULL, FK | 取込ファイルID |
 | usage_date | TEXT | NOT NULL | 利用日 `YYYY-MM-DD` |
-| billing_month | TEXT | NOT NULL | 請求月 `YYYY-MM` |
+| withdrawal_month | TEXT | NOT NULL | 引落月 `YYYY-MM` |
 | merchant_name | TEXT | NOT NULL | 利用先 |
 | amount | INTEGER | NOT NULL | 円単位の利用額 |
 | description | TEXT | NULL | 摘要・補足 |
@@ -263,7 +262,7 @@ card-payment-manager/
 
 ```sql
 CREATE UNIQUE INDEX ux_card_usage_detail
-ON card_usage(card_id, billing_month, detail_hash);
+ON card_usage(card_id, withdrawal_month, detail_hash);
 ```
 
 取消・返金は負数金額として保持します。元CSVに明細IDがある場合は、それを優先して重複判定へ使用します。
@@ -271,10 +270,10 @@ ON card_usage(card_id, billing_month, detail_hash);
 ## 9. 適用期間の判定
 
 ```sql
-assignment.start_month <= usage.billing_month
+assignment.start_month <= usage.withdrawal_month
 AND (
     assignment.end_month IS NULL
-    OR usage.billing_month <= assignment.end_month
+    OR usage.withdrawal_month <= assignment.end_month
 )
 ```
 
@@ -284,9 +283,9 @@ AND (
 
 ### 10.1 `v_monthly_card_usage`
 
-請求月・カード単位の利用額を集計します。
+引落月・カード単位の利用額を集計します。
 
-- `billing_month`
+- `withdrawal_month`
 - `card_id`
 - `card_code`
 - `card_name`
@@ -295,9 +294,9 @@ AND (
 
 ### 10.2 `v_monthly_bank_card_usage`
 
-請求月のカード・口座紐付けを適用し、銀行口座単位にカード利用額を集計します。
+引落月のカード・口座紐付けを適用し、銀行口座単位にカード利用額を集計します。
 
-- `billing_month`
+- `withdrawal_month`
 - `bank_account_id`
 - `account_code`
 - `account_name`
@@ -308,7 +307,7 @@ AND (
 
 銀行口座ごとの設定済み銀行引落額を対象月単位で集計します。
 
-- `billing_month`
+- `withdrawal_month`
 - `bank_account_id`
 - `bank_payment_amount`
 
@@ -316,7 +315,7 @@ AND (
 
 ### 10.4 `v_monthly_bank_summary`
 
-- `billing_month`
+- `withdrawal_month`
 - `bank_account_id`
 - `account_code`
 - `account_name`
@@ -337,26 +336,26 @@ class CardCsvImporter:
     def can_handle(self, card_code: str) -> bool:
         ...
 
-    def read(self, file_path: Path, billing_month: str | None = None):
+    def read(self, file_path: Path, withdrawal_month: str | None = None):
         ...
 ```
 
 共通明細モデルの必須項目:
 
 - `usage_date`
-- `billing_month`
+- `withdrawal_month`
 - `merchant_name`
 - `amount`
 - `original_row_number`
 
-### 11.2 請求月の決定順
+### 11.2 引落月の決定順
 
-1. CSV内の請求月列
+1. CSV内の引落月列
 2. カード会社固有のファイルヘッダー
 3. コマンドライン引数
 4. ファイル名 `YYYYMM.csv`
 
-複数の方法で得た請求月が一致しない場合、初期実装では取込を中止します。
+複数の方法で得た引落月が一致しない場合、初期実装では取込を中止します。
 
 ### 11.3 文字コード
 
@@ -377,7 +376,7 @@ class CardCsvImporter:
 4. SHA-256を計算し、取込済みファイルか確認する
 5. `import_file` に `processing` 状態で登録する
 6. カード別インポーターでCSVを読み込む
-7. 利用日、請求月、利用先、金額を検証・正規化する
+7. 利用日、引落月、利用先、金額を検証・正規化する
 8. 明細ハッシュを生成する
 9. 1ファイル単位のトランザクションで明細を登録する
 10. `import_file` を `success` に更新する
@@ -407,7 +406,7 @@ output/202608/card_usage_202608.csv
 
 | 列名 | 説明 |
 |---|---|
-| billing_month | 請求月 |
+| withdrawal_month | 引落月 |
 | account_code | 口座コード |
 | account_name | 口座名 |
 | card_amount | カード利用額 |
@@ -421,9 +420,9 @@ output/202608/card_usage_202608.csv
 - カードフォルダに対応するマスタが存在しない
 - 必須列が存在しない
 - 利用日を変換できない
-- 請求月を決定できない
+- 引落月を決定できない
 - 金額を整数へ変換できない
-- ファイル名とCSV内の請求月が矛盾する
+- ファイル名とCSV内の引落月が矛盾する
 - 対象月のカード・口座紐付けが存在しない
 - 同一カードに期間重複する口座設定がある
 
@@ -434,7 +433,7 @@ output/202608/card_usage_202608.csv
 - 実行開始・終了日時
 - 対象ファイルとカード
 - 読込件数、登録件数、スキップ件数
-- 請求月
+- 引落月
 - エラー内容
 
 カード番号、口座番号、認証情報、CSV全行はログへ出力しません。
@@ -491,7 +490,7 @@ output/202608/card_usage_202608.csv
 - 月次設定は上書きせず、適用期間で履歴管理する
 - CSV形式差は巨大な条件分岐ではなくカード別クラスへ分離する
 - 取込はファイル単位のトランザクションとする
-- ファイル名だけを請求月の唯一の情報源にしない
+- ファイル名だけを引落月の唯一の情報源にしない
 
 ## 21. アンチパターン
 
@@ -517,7 +516,7 @@ output/202608/card_usage_202608.csv
 
 ## 22. 将来拡張
 
-- 実際の引落月を保持し、請求月と分離する
+- カード会社の請求月を保持し、引落月と分離する
 - 銀行残高と月末予測残高を管理する
 - Excelレポートを生成する
 - Power BIなどへ連携する
@@ -531,7 +530,7 @@ output/202608/card_usage_202608.csv
 - 円建てのみ
 - CSV取込のみ
 - カード別フォルダ構成
-- 利用日と請求月の保持
+- 利用日と引落月の保持
 - 月別・銀行口座別集計
 - CSVレポート出力
 - バッチファイルからの実行
