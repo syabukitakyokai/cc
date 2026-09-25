@@ -9,39 +9,33 @@ def initialize_database() -> None:
     db_dir = project_root / "db"
     db_dir.mkdir(exist_ok=True)
 
-    db_file = db_dir / "cc.db"
-    schema_file = project_root / "sql" / "schema.sql"
-
-    if not schema_file.exists():
-        raise FileNotFoundError(
-            f"schema.sql not found: {schema_file}"
-        )
-
-    with open(schema_file, "r", encoding="utf-8") as f:
-        schema_sql = f.read()
-
-    conn = sqlite3.connect(db_file)
-
+    db_file = db_dir / "cc.sqlite"
     try:
-        # 外部キー制約を有効化
-        conn.execute("PRAGMA foreign_keys = ON")
+        with sqlite3.connect(db_file) as conn:
+            print(f"Database : {db_file}")
 
-        # schema.sql実行
-        conn.executescript(schema_sql)
+            # 外部キー制約を有効化
+            conn.execute("PRAGMA foreign_keys = ON")
 
-        conn.commit()
+            sql_dir = project_root / "sql"
+            for filename in ["schema.sql", "seed.sql", "views.sql"]:
+                file_path = sql_dir / filename
+                if not file_path.exists():
+                    raise FileNotFoundError(
+                        f"{filename} not found: {file_path}"
+                    )
 
-        print("Database initialized successfully.")
-        print(f"Database : {db_file}")
-        print(f"Schema   : {schema_file}")
+                with open(file_path, "r", encoding="utf-8") as f:
+                    schema_sql = f.read()
+                    print(f"Script   : {file_path}")
+                    # sql実行
+                    conn.executescript(schema_sql)
 
+            conn.commit()
+            print("Database initialized successfully.")
     except Exception:
-        conn.rollback()
+        print(f"Script execution failed.")
         raise
-
-    finally:
-        conn.close()
-
 
 def main() -> int:
     try:
