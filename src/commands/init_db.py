@@ -1,20 +1,38 @@
-from ..database import execute_script
+from ..settings import Settings
+from ..database import Database
 
-from ..settings import SQL_FILES
+def main(
+    settings: Settings,
+    database: Database
+) -> int:
 
-
-def main() -> int:
     try:
-        for sql_file in SQL_FILES:
-            print(f"Executing {sql_file.name}...")
-            execute_script(sql_file)
 
-        print("Database initialized successfully.")
+        for sql_file in (
+            settings.schema_file,
+            settings.views_file,
+            settings.seed_file,
+        ):
+
+            print(
+                f"Executing {sql_file.name}..."
+            )
+
+            database.execute_script(
+                sql_file
+            )
+
+        print(
+            "Database initialized successfully."
+        )
 
         return 0
 
     except Exception as ex:
-        print(f"Failed to initialize database: {ex}")
+
+        print(
+            f"Failed to initialize database: {ex}"
+        )
 
         return 1
 

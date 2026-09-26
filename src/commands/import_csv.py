@@ -8,7 +8,8 @@ from ..import_service import (
 )
 from ..importers.base import CardImporter
 from ..importers.rakuten import RakutenImporter
-from ..settings import INPUT_DIR
+from ..settings import Settings
+from ..database import Database
 
 
 def create_importer(
@@ -35,9 +36,11 @@ def create_importer(
 
 def import_csv_file(
     *,
+    database: Database,
     card_code: str,
     file_path: Path,
     withdrawal_month: str,
+    input_dir: Path
 ) -> ImportResult:
     """
     カード利用明細CSVを取り込む。
@@ -59,6 +62,7 @@ def import_csv_file(
     print(f"Parsed records: {len(records)}")
 
     result = import_card_usage_records(
+        database=database,
         card_code=card_code,
         source_file=file_path,
         records=records,
@@ -67,6 +71,7 @@ def import_csv_file(
     imported_file = move_to_imported_directory(
         card_code=card_code,
         source_file=file_path,
+        input_dir=input_dir,
     )
 
     print("CSV imported successfully.")
@@ -81,13 +86,14 @@ def move_to_imported_directory(
     *,
     card_code: str,
     source_file: Path,
+    input_dir: Path
 ) -> Path:
     """
     取込完了ファイルをimportedフォルダへ移動する。
     """
 
     imported_directory = (
-        INPUT_DIR
+        input_dir
         / card_code
         / "imported"
     )
@@ -118,6 +124,8 @@ def move_to_imported_directory(
 
 def main(
     *,
+    settings: Settings,
+    database: Database,
     card_code: str,
     file_path: Path,
     withdrawal_month: str,
@@ -128,9 +136,11 @@ def main(
 
     try:
         import_csv_file(
+            database=database,
             card_code=card_code,
             file_path=file_path,
             withdrawal_month=withdrawal_month,
+            input_dir=settings.input_dir
         )
 
         return 0
@@ -142,5 +152,4 @@ def main(
 
     except Exception as error:
         print(f"CSV import failed: {error}")
-
         return 1

@@ -1,10 +1,11 @@
-from .database import fetch_all
+from .database import Database
 
 
 def get_monthly_bank_summary(
+    database: Database,
     withdrawal_month: str,
 ):
-    return fetch_all(
+    return database.fetch_all(
         """
         SELECT
             withdrawal_month,

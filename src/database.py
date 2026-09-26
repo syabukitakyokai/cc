@@ -1,111 +1,136 @@
+from contextlib import contextmanager
+from pathlib import Path
 import sqlite3
 
-from pathlib import Path
 
-from .settings import DB_FILE
+class Database:
 
+    def __init__(
+        self,
+        db_file: Path,
+    ) -> None:
 
-def create_connection(
-    db_file: Path = DB_FILE,
-) -> sqlite3.Connection:
-    """
-    SQLite接続生成
-    """
+        self._db_file = db_file
 
-    db_file.parent.mkdir(
-        parents=True,
-        exist_ok=True,
-    )
+    @property
+    def db_file(self) -> Path:
+        return self._db_file
 
-    connection = sqlite3.connect(
-        db_file
-    )
+    def create_connection(
+        self,
+    ) -> sqlite3.Connection:
 
-    connection.row_factory = sqlite3.Row
-
-    # 外部キー制約を有効化
-    connection.execute(
-        "PRAGMA foreign_keys = ON"
-    )
-
-    return connection
-
-
-def execute_script(
-    sql_file: Path,
-) -> None:
-    """
-    SQLスクリプト実行
-    """
-
-    if not sql_file.exists():
-        raise FileNotFoundError(
-            f"SQL file not found: {sql_file}"
+        self._db_file.parent.mkdir(
+            parents=True,
+            exist_ok=True,
         )
 
-    with create_connection() as connection:
-        with open(
-            sql_file,
-            mode="r",
-            encoding="utf-8",
-        ) as file:
-
-            sql = file.read()
-
-        connection.executescript(sql)
-
-        connection.commit()
-
-
-def fetch_all(
-    sql: str,
-    parameters: tuple = (),
-) -> list[sqlite3.Row]:
-    """
-    SELECT複数件
-    """
-
-    with create_connection() as connection:
-
-        cursor = connection.execute(
-            sql,
-            parameters,
+        connection = sqlite3.connect(
+            self._db_file
         )
 
-        return list(cursor.fetchall())
-
-
-def fetch_one(
-    sql: str,
-    parameters: tuple = (),
-) -> sqlite3.Row | None:
-    """
-    SELECT単一件
-    """
-
-    with create_connection() as connection:
-
-        cursor = connection.execute(
-            sql,
-            parameters,
+        connection.row_factory = (
+            sqlite3.Row
         )
-
-        return cursor.fetchone()
-
-
-def execute(
-    sql: str,
-    parameters: tuple = (),
-) -> None:
-    """
-    INSERT / UPDATE / DELETE
-    """
-
-    with create_connection() as connection:
 
         connection.execute(
-            sql,
-            parameters,
+            "PRAGMA foreign_keys = ON"
         )
 
-        connection.commit()
+        return connection
+
+    def execute_script(
+        self,
+        sql_file: Path,
+    ) -> None:
+
+        if not sql_file.exists():
+            raise FileNotFoundError(
+                f"SQL file not found: {sql_file}"
+            )
+
+        sql = sql_file.read_text(
+            encoding="utf-8"
+        )
+
+        with self.create_connection() as connection:
+
+            connection.executescript(
+                sql
+            )
+
+            connection.commit()
+
+    def execute(
+        self,
+        sql: str,
+        parameters: tuple = (),
+    ) -> None:
+
+        with self.create_connection() as connection:
+
+            connection.execute(
+                sql,
+                parameters,
+            )
+
+            connection.commit()
+
+    def fetch_one(
+        self,
+        sql: str,
+        parameters: tuple = (),
+    ) -> sqlite3.Row | None:
+
+        with self.create_connection() as connection:
+
+            cursor = connection.execute(
+                sql,
+                parameters,
+            )
+
+            return cursor.fetchone()
+
+    def fetch_all(
+        self,
+        sql: str,
+        parameters: tuple = (),
+    ) -> list[sqlite3.Row]:
+
+        with self.create_connection() as connection:
+
+            cursor = connection.execute(
+                sql,
+                parameters,
+            )
+
+            return list(
+                cursor.fetchall()
+            )
+
+    @contextmanager
+    def transaction(
+        self,
+    ):
+
+        connection = self.create_connection()
+
+        try:
+
+            connection.execute(
+                "BEGIN"
+            )
+
+            yield connection
+
+            connection.commit()
+
+        except Exception:
+
+            connection.rollback()
+
+            raise
+
+        finally:
+
+            connection.close()

@@ -2,11 +2,16 @@ from ..report_service import (
     get_monthly_bank_summary,
 )
 
+from ..settings import Settings
+from ..database import Database
 
 def main(
+    *,
+    settings: Settings,
+    database: Database,
     withdrawal_month: str,
 ) -> int:
-
+    
     rows = get_monthly_bank_summary(
         withdrawal_month
     )
