@@ -11,8 +11,9 @@ def main(
     database: Database,
     withdrawal_month: str,
 ) -> int:
-    
+
     rows = get_monthly_bank_summary(
+        database,
         withdrawal_month
     )
 

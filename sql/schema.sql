@@ -29,11 +29,6 @@ CREATE TABLE IF NOT EXISTS credit_card (
     card_code TEXT NOT NULL UNIQUE,
     card_name TEXT NOT NULL,
 
-    importer_type TEXT NOT NULL,
-
-    enabled INTEGER NOT NULL DEFAULT 1
-        CHECK (enabled IN (0, 1)),
-
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );

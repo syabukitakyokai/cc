@@ -250,7 +250,6 @@ def _get_card_id(
         SELECT id
         FROM credit_card
         WHERE card_code = ?
-          AND enabled = 1
         """,
         (card_code,),
     ).fetchone()

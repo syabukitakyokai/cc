@@ -5,6 +5,7 @@ def get_monthly_bank_summary(
     database: Database,
     withdrawal_month: str,
 ):
+
     return database.fetch_all(
         """
         SELECT

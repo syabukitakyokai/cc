@@ -46,39 +46,39 @@ DO UPDATE SET
 
 INSERT INTO credit_card (
     card_code,
-    card_name,
-    importer_type,
-    enabled
+    card_name
 )
 VALUES (
-    'rakuten',
-    '楽天カード',
-    'rakuten',
-    1
+    'rakuten_master',
+    '楽天カード'
 )
 ON CONFLICT (card_code)
 DO UPDATE SET
-    card_name = excluded.card_name,
-    importer_type = excluded.importer_type,
-    enabled = excluded.enabled;
+    card_name = excluded.card_name;
 
 INSERT INTO credit_card (
     card_code,
-    card_name,
-    importer_type,
-    enabled
+    card_name
 )
 VALUES (
-    'smbc',
-    '三井住友カード',
-    'smbc',
-    1
+    'rakuten_pink',
+    '楽天PINKカード'
 )
 ON CONFLICT (card_code)
 DO UPDATE SET
-    card_name = excluded.card_name,
-    importer_type = excluded.importer_type,
-    enabled = excluded.enabled;
+    card_name = excluded.card_name;
+
+INSERT INTO credit_card (
+    card_code,
+    card_name
+)
+VALUES (
+    'smbc',
+    '三井住友カード'
+)
+ON CONFLICT (card_code)
+DO UPDATE SET
+    card_name = excluded.card_name;
 
 --------------------------------------------------
 -- カード・銀行口座紐付け
@@ -94,7 +94,7 @@ VALUES (
     (
         SELECT id
         FROM credit_card
-        WHERE card_code = 'rakuten'
+        WHERE card_code = 'rakuten_master'
     ),
     (
         SELECT id
@@ -111,6 +111,35 @@ ON CONFLICT (
 DO UPDATE SET
     bank_account_id = excluded.bank_account_id,
     end_month = excluded.end_month;
+
+INSERT INTO card_bank_account_assignment (
+    card_id,
+    bank_account_id,
+    start_month,
+    end_month
+)
+VALUES (
+    (
+        SELECT id
+        FROM credit_card
+        WHERE card_code = 'rakuten_pink'
+    ),
+    (
+        SELECT id
+        FROM bank_account
+        WHERE account_code = 'rakuten_bank'
+    ),
+    '2026-01',
+    NULL
+)
+ON CONFLICT (
+    card_id,
+    start_month
+)
+DO UPDATE SET
+    bank_account_id = excluded.bank_account_id,
+    end_month = excluded.end_month;
+
 
 INSERT INTO card_bank_account_assignment (
     card_id,
@@ -218,7 +247,7 @@ VALUES (
     (
         SELECT id
         FROM credit_card
-        WHERE card_code = 'rakuten'
+        WHERE card_code LIKE 'rakuten_%'
     ),
     '202609.csv',
     'input/rakuten/imported/202609.csv',
@@ -262,7 +291,7 @@ VALUES (
     (
         SELECT id
         FROM credit_card
-        WHERE card_code = 'rakuten'
+        WHERE card_code LIKE 'rakuten_%'
     ),
     (
         SELECT id
@@ -308,7 +337,7 @@ VALUES (
     (
         SELECT id
         FROM credit_card
-        WHERE card_code = 'rakuten'
+        WHERE card_code LIKE 'rakuten_%'
     ),
     (
         SELECT id

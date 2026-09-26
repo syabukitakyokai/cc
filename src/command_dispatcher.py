@@ -1,4 +1,6 @@
 from pathlib import Path
+from .database import Database
+from .settings import Settings
 
 from .commands.import_csv import (
     main as import_csv,
@@ -12,9 +14,9 @@ from .commands.report import (
     main as report,
 )
 
-from .database import Database
-from .settings import Settings
-
+from .commands.import_all import (
+    main as import_all,
+)
 
 def dispatch_command(
     arguments,
@@ -47,6 +49,12 @@ def dispatch_command(
                 card_code=arguments.card,
                 file_path=Path(arguments.file),
                 withdrawal_month=arguments.month,
+            )
+
+        case "import":
+            return import_all(
+                settings=settings,
+                database=database,
             )
 
         case _:

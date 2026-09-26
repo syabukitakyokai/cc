@@ -84,6 +84,14 @@ def create_parser() -> argparse.ArgumentParser:
         required=True,
     )
 
+    subparsers.add_parser(
+        "import",
+        help=(
+            "Automatically import all configured "
+            "credit card CSV files."
+        ),
+    )
+
     return parser
 
 
