@@ -63,6 +63,64 @@ INNER JOIN credit_card cc
     ON cc.id = cu.card_id;
 
 --------------------------------------------------
+-- 集計対象月
+--------------------------------------------------
+
+DROP VIEW IF EXISTS v_calendar_month;
+
+CREATE VIEW v_calendar_month AS
+
+WITH RECURSIVE
+
+month_range AS (
+
+    SELECT
+        MIN(
+            strftime(
+                '%Y-%m',
+                usage_date
+            )
+        ) AS min_month,
+
+        strftime(
+            '%Y-%m',
+            date(
+                MAX(withdrawal_month)
+                || '-01',
+                '+1 month'
+            )
+        ) AS max_month
+
+    FROM v_card_usage_with_withdrawal_month
+),
+
+months(month) AS (
+
+    SELECT min_month
+    FROM month_range
+    WHERE min_month IS NOT NULL
+
+    UNION ALL
+
+    SELECT
+        strftime(
+            '%Y-%m',
+            date(
+                month || '-01',
+                '+1 month'
+            )
+        )
+
+    FROM months
+    CROSS JOIN month_range
+
+    WHERE month < max_month
+)
+
+SELECT month
+FROM months;
+
+--------------------------------------------------
 -- カード別月次集計
 --------------------------------------------------
 
@@ -112,7 +170,7 @@ SELECT
         0
     ) AS card_amount
 
-FROM calendar_month cm
+FROM v_calendar_month cm
 
 CROSS JOIN bank_account ba
 
@@ -156,7 +214,7 @@ SELECT
         0
     ) AS fixed_payment_amount
 
-FROM calendar_month cm
+FROM v_calendar_month cm
 
 CROSS JOIN bank_account ba
 
@@ -265,7 +323,7 @@ SELECT
 
     payment.amount
 
-FROM calendar_month cm
+FROM v_calendar_month cm
 
 INNER JOIN bank_monthly_payment payment
     ON payment.start_month <= cm.month

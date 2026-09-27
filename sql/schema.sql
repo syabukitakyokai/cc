@@ -221,21 +221,6 @@ CREATE TABLE IF NOT EXISTS card_usage (
 );
 
 --------------------------------------------------
--- 月マスタ
---------------------------------------------------
-
-CREATE TABLE IF NOT EXISTS calendar_month (
-    month TEXT PRIMARY KEY
-        CHECK (
-            length(month) = 7
-            AND month GLOB
-                '[0-9][0-9][0-9][0-9]-[0-9][0-9]'
-            AND substr(month, 6, 2)
-                BETWEEN '01' AND '12'
-        )
-);
-
---------------------------------------------------
 -- 一意制約
 --------------------------------------------------
 

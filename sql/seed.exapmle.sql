@@ -208,29 +208,4 @@ DO UPDATE SET
     amount = excluded.amount,
     end_month = excluded.end_month;
 
---------------------------------------------------
--- 月マスタ
---------------------------------------------------
-
-WITH RECURSIVE months(month) AS (
-    SELECT '2026-01'
-
-    UNION ALL
-
-    SELECT strftime(
-        '%Y-%m',
-        date(
-            month || '-01',
-            '+1 month'
-        )
-    )
-    FROM months
-    WHERE month < '2030-12'
-)
-INSERT OR IGNORE INTO calendar_month (
-    month
-)
-SELECT month
-FROM months;
-
 COMMIT;
