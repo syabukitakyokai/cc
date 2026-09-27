@@ -5,6 +5,8 @@ from .importers.epos import EposImporter
 from .importers.nicos import NicosImporter
 from .importers.saison import SaisonImporter
 from .importers.jcb import JcbImporter
+from .importers.view import ViewImporter
+
 
 
 IMPORTER_TYPES: dict[
@@ -17,6 +19,7 @@ IMPORTER_TYPES: dict[
     "nicos": NicosImporter,
     "saison": SaisonImporter,
     "jcb": JcbImporter,
+    "view": ViewImporter,
 }
 
 
