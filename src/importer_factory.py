@@ -1,5 +1,6 @@
 from .importers.base import CardImporter
 from .importers.rakuten import RakutenImporter
+from .importers.vpass import VpassImporter
 
 
 IMPORTER_TYPES: dict[
@@ -7,6 +8,7 @@ IMPORTER_TYPES: dict[
     type[CardImporter],
 ] = {
     "rakuten": RakutenImporter,
+    "vpass": VpassImporter,
 }
 
 
