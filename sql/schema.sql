@@ -29,6 +29,18 @@ CREATE TABLE IF NOT EXISTS credit_card (
     card_code TEXT NOT NULL UNIQUE,
     card_name TEXT NOT NULL,
 
+    statement_start_day INTEGER NOT NULL
+        CHECK (
+            statement_start_day
+            BETWEEN 1 AND 31
+        ),
+
+    withdrawal_month_offset INTEGER NOT NULL
+        CHECK (
+            withdrawal_month_offset
+            BETWEEN 0 AND 12
+        ),
+
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -46,8 +58,10 @@ CREATE TABLE IF NOT EXISTS card_bank_account_assignment (
     start_month TEXT NOT NULL
         CHECK (
             length(start_month) = 7
-            AND start_month GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]'
-            AND substr(start_month, 6, 2) BETWEEN '01' AND '12'
+            AND start_month GLOB
+                '[0-9][0-9][0-9][0-9]-[0-9][0-9]'
+            AND substr(start_month, 6, 2)
+                BETWEEN '01' AND '12'
         ),
 
     end_month TEXT
@@ -55,8 +69,10 @@ CREATE TABLE IF NOT EXISTS card_bank_account_assignment (
             end_month IS NULL
             OR (
                 length(end_month) = 7
-                AND end_month GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]'
-                AND substr(end_month, 6, 2) BETWEEN '01' AND '12'
+                AND end_month GLOB
+                    '[0-9][0-9][0-9][0-9]-[0-9][0-9]'
+                AND substr(end_month, 6, 2)
+                    BETWEEN '01' AND '12'
                 AND end_month >= start_month
             )
         ),
@@ -84,14 +100,17 @@ CREATE TABLE IF NOT EXISTS bank_monthly_payment (
     bank_account_id INTEGER NOT NULL,
 
     payment_name TEXT NOT NULL,
+
     amount INTEGER NOT NULL
         CHECK (amount >= 0),
 
     start_month TEXT NOT NULL
         CHECK (
             length(start_month) = 7
-            AND start_month GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]'
-            AND substr(start_month, 6, 2) BETWEEN '01' AND '12'
+            AND start_month GLOB
+                '[0-9][0-9][0-9][0-9]-[0-9][0-9]'
+            AND substr(start_month, 6, 2)
+                BETWEEN '01' AND '12'
         ),
 
     end_month TEXT
@@ -99,8 +118,10 @@ CREATE TABLE IF NOT EXISTS bank_monthly_payment (
             end_month IS NULL
             OR (
                 length(end_month) = 7
-                AND end_month GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]'
-                AND substr(end_month, 6, 2) BETWEEN '01' AND '12'
+                AND end_month GLOB
+                    '[0-9][0-9][0-9][0-9]-[0-9][0-9]'
+                AND substr(end_month, 6, 2)
+                    BETWEEN '01' AND '12'
                 AND end_month >= start_month
             )
         ),
@@ -126,18 +147,6 @@ CREATE TABLE IF NOT EXISTS import_file (
     relative_path TEXT NOT NULL,
 
     file_hash TEXT NOT NULL UNIQUE,
-
-    withdrawal_month TEXT
-        CHECK (
-            withdrawal_month IS NULL
-            OR (
-                length(withdrawal_month) = 7
-                AND withdrawal_month GLOB
-                    '[0-9][0-9][0-9][0-9]-[0-9][0-9]'
-                AND substr(withdrawal_month, 6, 2)
-                    BETWEEN '01' AND '12'
-            )
-        ),
 
     status TEXT NOT NULL
         CHECK (
@@ -184,18 +193,9 @@ CREATE TABLE IF NOT EXISTS card_usage (
                 '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'
         ),
 
-    withdrawal_month TEXT NOT NULL
-        CHECK (
-            length(withdrawal_month) = 7
-            AND withdrawal_month GLOB
-                '[0-9][0-9][0-9][0-9]-[0-9][0-9]'
-            AND substr(withdrawal_month, 6, 2)
-                BETWEEN '01' AND '12'
-        ),
-
     merchant_name TEXT NOT NULL,
 
-    -- 返金・取消は負数で保持するため、負数を許可する
+    -- 返金・取消は負数として保持する
     amount INTEGER NOT NULL,
 
     description TEXT,
@@ -221,11 +221,24 @@ CREATE TABLE IF NOT EXISTS card_usage (
 );
 
 --------------------------------------------------
+-- 月マスタ
+--------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS calendar_month (
+    month TEXT PRIMARY KEY
+        CHECK (
+            length(month) = 7
+            AND month GLOB
+                '[0-9][0-9][0-9][0-9]-[0-9][0-9]'
+            AND substr(month, 6, 2)
+                BETWEEN '01' AND '12'
+        )
+);
+
+--------------------------------------------------
 -- 一意制約
 --------------------------------------------------
 
--- 同一カードの同じ開始月に、
--- 複数の引落口座が設定されるのを防ぐ
 CREATE UNIQUE INDEX IF NOT EXISTS
     ux_card_bank_account_assignment_start
 ON card_bank_account_assignment (
@@ -233,7 +246,6 @@ ON card_bank_account_assignment (
     start_month
 );
 
--- 同じ口座・項目・開始月の重複設定を防ぐ
 CREATE UNIQUE INDEX IF NOT EXISTS
     ux_bank_monthly_payment_start
 ON bank_monthly_payment (
@@ -242,12 +254,10 @@ ON bank_monthly_payment (
     start_month
 );
 
--- 同一明細の重複取込を防ぐ
 CREATE UNIQUE INDEX IF NOT EXISTS
     ux_card_usage_detail
 ON card_usage (
     card_id,
-    withdrawal_month,
     detail_hash
 );
 
@@ -256,9 +266,9 @@ ON card_usage (
 --------------------------------------------------
 
 CREATE INDEX IF NOT EXISTS
-    ix_card_usage_withdrawal_month
+    ix_card_usage_usage_date
 ON card_usage (
-    withdrawal_month
+    usage_date
 );
 
 CREATE INDEX IF NOT EXISTS
@@ -274,19 +284,19 @@ ON card_usage (
 );
 
 CREATE INDEX IF NOT EXISTS
-    ix_card_bank_account_assignment_card_id
+    ix_card_assignment_card_id
 ON card_bank_account_assignment (
     card_id
 );
 
 CREATE INDEX IF NOT EXISTS
-    ix_card_bank_account_assignment_bank_account_id
+    ix_card_assignment_bank_account_id
 ON card_bank_account_assignment (
     bank_account_id
 );
 
 CREATE INDEX IF NOT EXISTS
-    ix_bank_monthly_payment_bank_account_id
+    ix_bank_payment_account_id
 ON bank_monthly_payment (
     bank_account_id
 );
@@ -295,12 +305,6 @@ CREATE INDEX IF NOT EXISTS
     ix_import_file_card_id
 ON import_file (
     card_id
-);
-
-CREATE INDEX IF NOT EXISTS
-    ix_import_file_withdrawal_month
-ON import_file (
-    withdrawal_month
 );
 
 --------------------------------------------------
@@ -328,20 +332,5 @@ BEGIN
     SET updated_at = CURRENT_TIMESTAMP
     WHERE id = NEW.id;
 END;
-
---------------------------------------------------
--- 月マスタ
---------------------------------------------------
-
-CREATE TABLE IF NOT EXISTS calendar_month (
-    month TEXT PRIMARY KEY
-        CHECK (
-            length(month) = 7
-            AND month GLOB
-                '[0-9][0-9][0-9][0-9]-[0-9][0-9]'
-            AND substr(month, 6, 2)
-                BETWEEN '01' AND '12'
-        )
-);
 
 COMMIT;

@@ -1,39 +1,105 @@
+BEGIN TRANSACTION;
+
 --------------------------------------------------
--- カード別月次集計
+-- 利用明細への引落月付与
 --------------------------------------------------
 
-DROP VIEW IF EXISTS v_monthly_card_usage;
+DROP VIEW IF EXISTS
+    v_card_usage_with_withdrawal_month;
 
-CREATE VIEW v_monthly_card_usage AS
+CREATE VIEW
+    v_card_usage_with_withdrawal_month
+AS
 SELECT
-    cu.withdrawal_month,
+    cu.id AS card_usage_id,
 
-    cc.id AS card_id,
+    cu.card_id,
+
     cc.card_code,
     cc.card_name,
 
-    COUNT(*) AS detail_count,
+    cu.import_file_id,
+    cu.usage_date,
 
-    SUM(cu.amount) AS amount
+    cc.statement_start_day,
+    cc.withdrawal_month_offset,
+
+    strftime(
+        '%Y-%m',
+        date(
+            cu.usage_date,
+            'start of month',
+
+            CASE
+                WHEN CAST(
+                    strftime(
+                        '%d',
+                        cu.usage_date
+                    )
+                    AS INTEGER
+                ) >= cc.statement_start_day
+                THEN '+0 months'
+                ELSE '-1 month'
+            END,
+
+            printf(
+                '+%d months',
+                cc.withdrawal_month_offset
+            )
+        )
+    ) AS withdrawal_month,
+
+    cu.merchant_name,
+    cu.amount,
+    cu.description,
+    cu.original_row_number,
+    cu.source_detail_id,
+    cu.detail_hash,
+    cu.created_at
 
 FROM card_usage cu
 
 INNER JOIN credit_card cc
-    ON cc.id = cu.card_id
+    ON cc.id = cu.card_id;
+
+--------------------------------------------------
+-- カード別月次集計
+--------------------------------------------------
+
+DROP VIEW IF EXISTS
+    v_monthly_card_usage;
+
+CREATE VIEW
+    v_monthly_card_usage
+AS
+SELECT
+    withdrawal_month,
+
+    card_id,
+    card_code,
+    card_name,
+
+    COUNT(*) AS detail_count,
+    SUM(amount) AS amount
+
+FROM v_card_usage_with_withdrawal_month
 
 GROUP BY
-    cu.withdrawal_month,
-    cc.id,
-    cc.card_code,
-    cc.card_name;
+    withdrawal_month,
+    card_id,
+    card_code,
+    card_name;
 
 --------------------------------------------------
--- カード利用額を銀行口座へ集約
+-- 銀行口座別カード利用額
 --------------------------------------------------
 
-DROP VIEW IF EXISTS v_monthly_bank_card_usage;
+DROP VIEW IF EXISTS
+    v_monthly_bank_card_usage;
 
-CREATE VIEW v_monthly_bank_card_usage AS
+CREATE VIEW
+    v_monthly_bank_card_usage
+AS
 SELECT
     cm.month AS withdrawal_month,
 
@@ -62,6 +128,8 @@ LEFT JOIN v_monthly_card_usage card_usage
     ON card_usage.card_id = assignment.card_id
     AND card_usage.withdrawal_month = cm.month
 
+WHERE ba.enabled = 1
+
 GROUP BY
     cm.month,
     ba.id,
@@ -72,9 +140,12 @@ GROUP BY
 -- 銀行口座別固定引落額
 --------------------------------------------------
 
-DROP VIEW IF EXISTS v_monthly_bank_fixed_payment;
+DROP VIEW IF EXISTS
+    v_monthly_bank_fixed_payment;
 
-CREATE VIEW v_monthly_bank_fixed_payment AS
+CREATE VIEW
+    v_monthly_bank_fixed_payment
+AS
 SELECT
     cm.month AS withdrawal_month,
 
@@ -97,17 +168,22 @@ LEFT JOIN bank_monthly_payment payment
         OR cm.month <= payment.end_month
     )
 
+WHERE ba.enabled = 1
+
 GROUP BY
     cm.month,
     ba.id;
 
 --------------------------------------------------
--- 最終集計
+-- 銀行口座別月次集計
 --------------------------------------------------
 
-DROP VIEW IF EXISTS v_monthly_bank_summary;
+DROP VIEW IF EXISTS
+    v_monthly_bank_summary;
 
-CREATE VIEW v_monthly_bank_summary AS
+CREATE VIEW
+    v_monthly_bank_summary
+AS
 SELECT
     card.withdrawal_month,
 
@@ -126,20 +202,21 @@ SELECT
 FROM v_monthly_bank_card_usage card
 
 INNER JOIN v_monthly_bank_fixed_payment fixed
-    ON fixed.withdrawal_month = card.withdrawal_month
-    AND fixed.bank_account_id = card.bank_account_id;
+    ON fixed.withdrawal_month
+        = card.withdrawal_month
+    AND fixed.bank_account_id
+        = card.bank_account_id;
 
 --------------------------------------------------
--- 銀行口座別内訳
+-- 銀行口座別月次内訳
 --------------------------------------------------
 
-DROP VIEW IF EXISTS v_monthly_bank_detail;
+DROP VIEW IF EXISTS
+    v_monthly_bank_detail;
 
-CREATE VIEW v_monthly_bank_detail AS
-
---------------------------------------------------
--- カード利用額
---------------------------------------------------
+CREATE VIEW
+    v_monthly_bank_detail
+AS
 
 SELECT
     usage.withdrawal_month,
@@ -150,8 +227,8 @@ SELECT
 
     'CARD' AS item_type,
 
-    cc.card_code AS item_code,
-    cc.card_name AS item_name,
+    usage.card_code AS item_code,
+    usage.card_name AS item_name,
 
     usage.amount
 
@@ -159,23 +236,20 @@ FROM v_monthly_card_usage usage
 
 INNER JOIN card_bank_account_assignment assignment
     ON assignment.card_id = usage.card_id
-    AND assignment.start_month <= usage.withdrawal_month
+    AND assignment.start_month
+        <= usage.withdrawal_month
     AND (
         assignment.end_month IS NULL
-        OR usage.withdrawal_month <= assignment.end_month
+        OR usage.withdrawal_month
+            <= assignment.end_month
     )
-
-INNER JOIN credit_card cc
-    ON cc.id = usage.card_id
 
 INNER JOIN bank_account ba
     ON ba.id = assignment.bank_account_id
 
-UNION ALL
+WHERE ba.enabled = 1
 
---------------------------------------------------
--- 固定引落
---------------------------------------------------
+UNION ALL
 
 SELECT
     cm.month AS withdrawal_month,
@@ -186,7 +260,7 @@ SELECT
 
     'PAYMENT' AS item_type,
 
-    payment.id AS item_code,
+    CAST(payment.id AS TEXT) AS item_code,
     payment.payment_name AS item_name,
 
     payment.amount
@@ -201,5 +275,8 @@ INNER JOIN bank_monthly_payment payment
     )
 
 INNER JOIN bank_account ba
-    ON ba.id = payment.bank_account_id;
-    
+    ON ba.id = payment.bank_account_id
+
+WHERE ba.enabled = 1;
+
+COMMIT;

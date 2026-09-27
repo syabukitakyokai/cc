@@ -68,11 +68,6 @@ def create_parser() -> argparse.ArgumentParser:
         required=True,
     )
 
-    import_parser.add_argument(
-        "--month",
-        required=True,
-    )
-
     #
     report_parser = subparsers.add_parser(
         "report",

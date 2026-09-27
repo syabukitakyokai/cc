@@ -48,7 +48,6 @@ def dispatch_command(
                 database=database,
                 card_code=arguments.card,
                 file_path=Path(arguments.file),
-                withdrawal_month=arguments.month,
             )
 
         case "import":

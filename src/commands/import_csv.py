@@ -39,7 +39,6 @@ def import_csv_file(
     database: Database,
     card_code: str,
     file_path: Path,
-    withdrawal_month: str,
     input_dir: Path
 ) -> ImportResult:
     """
@@ -53,12 +52,10 @@ def import_csv_file(
 
     records = importer.read(
         file_path=file_path,
-        withdrawal_month=withdrawal_month,
     )
 
     print(f"Card: {card_code}")
     print(f"File: {file_path}")
-    print(f"Withdrawal month: {withdrawal_month}")
     print(f"Parsed records: {len(records)}")
 
     result = import_card_usage_records(
@@ -128,7 +125,6 @@ def main(
     database: Database,
     card_code: str,
     file_path: Path,
-    withdrawal_month: str,
 ) -> int:
     """
     import-csvコマンドのエントリーポイント。
@@ -139,7 +135,6 @@ def main(
             database=database,
             card_code=card_code,
             file_path=file_path,
-            withdrawal_month=withdrawal_month,
             input_dir=settings.input_dir
         )
 

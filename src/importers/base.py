@@ -10,7 +10,6 @@ class CardImporter(ABC):
     def read(
         self,
         file_path: Path,
-        withdrawal_month: str,
     ) -> list:
         """
         カード会社のCSVを読み込み、

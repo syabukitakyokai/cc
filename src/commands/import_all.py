@@ -1,4 +1,3 @@
-import re
 import shutil
 from dataclasses import dataclass
 from pathlib import Path
@@ -12,12 +11,6 @@ from ..import_service import (
 )
 from ..importer_factory import create_importer
 from ..settings import Settings
-
-
-WITHDRAWAL_MONTH_PATTERN = re.compile(
-    r"(?P<year>\d{4})"
-    r"(?P<month>0[1-9]|1[0-2])"
-)
 
 
 @dataclass(frozen=True, slots=True)
@@ -235,25 +228,14 @@ def import_single_csv_file(
     print(f"Importer: {importer_name}")
 
     try:
-        withdrawal_month = (
-            detect_withdrawal_month(
-                source_file
-            )
-        )
-
         importer = create_importer(
             importer_name
         )
 
         records = importer.read(
             file_path=source_file,
-            withdrawal_month=withdrawal_month,
         )
 
-        print(
-            f"Withdrawal month: "
-            f"{withdrawal_month}"
-        )
         print(
             f"Parsed records: "
             f"{len(records)}"
@@ -322,36 +304,6 @@ def import_single_csv_file(
             status="failed",
             message=str(error),
         )
-
-
-def detect_withdrawal_month(
-    source_file: Path,
-) -> str:
-    """
-    ファイル名からYYYYMMを検出し、
-    YYYY-MM形式の引落月を返す。
-
-    対応例:
-        202609.csv
-        rakuten_202609.csv
-        enavi202609(4095).csv
-    """
-
-    match = WITHDRAWAL_MONTH_PATTERN.search(
-        source_file.stem
-    )
-
-    if match is None:
-        raise ValueError(
-            "Withdrawal month could not be "
-            "detected from the file name: "
-            f"{source_file.name}"
-        )
-
-    year = match.group("year")
-    month = match.group("month")
-
-    return f"{year}-{month}"
 
 
 def move_to_imported_directory(

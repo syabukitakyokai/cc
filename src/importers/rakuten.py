@@ -28,7 +28,6 @@ class RakutenImporter(CardImporter):
     def read(
         self,
         file_path: Path,
-        withdrawal_month: str,
     ) -> list:
         """
         楽天カードCSVを読み込み、共通明細へ変換する。
@@ -36,9 +35,6 @@ class RakutenImporter(CardImporter):
         Args:
             file_path:
                 読み込むCSVファイル。
-
-            withdrawal_month:
-                引落月。YYYY-MM形式。
 
         Returns:
             変換後のカード利用明細。
@@ -52,9 +48,6 @@ class RakutenImporter(CardImporter):
         """
 
         self._validate_file(file_path)
-        self._validate_withdrawal_month(
-            withdrawal_month
-        )
 
         records: list[CardUsageRecord] = []
 
@@ -100,7 +93,6 @@ class RakutenImporter(CardImporter):
                         row=row,
                         row_number=row_number,
                         column_indexes=column_indexes,
-                        withdrawal_month=withdrawal_month,
                         is_cancel=is_cancel_section,
                     )
 
@@ -120,7 +112,6 @@ class RakutenImporter(CardImporter):
         row: list[str],
         row_number: int,
         column_indexes: dict[str, int],
-        withdrawal_month: str,
         is_cancel: bool,
     ) -> CardUsageRecord:
         usage_date_text = self._get_column_value(
@@ -193,7 +184,6 @@ class RakutenImporter(CardImporter):
 
         return CardUsageRecord(
             usage_date=usage_date,
-            withdrawal_month=withdrawal_month,
             merchant_name=merchant_name,
             amount=amount,
             original_row_number=row_number,
