@@ -221,3 +221,6 @@ __marimo__/
 db/*.db
 db/*.sqlite
 db/*.sqlite3
+
+#bank, cardの初期設定
+sql/seed.sql
