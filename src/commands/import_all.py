@@ -186,7 +186,6 @@ def find_csv_files(
     raw_dir = (
         input_dir
         / card_code
-        / "raw"
     )
 
     raw_dir.mkdir(
