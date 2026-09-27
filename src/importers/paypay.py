@@ -74,6 +74,7 @@ class PayPayImporter(
 
                 #
                 # 遅延損害金などの行
+                # 本当は登録したいけど、日付をどうするか決めかねている
                 #
                 if not usage_date_text:
                     continue
