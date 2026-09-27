@@ -3,6 +3,7 @@ from .importers.rakuten import RakutenImporter
 from .importers.vpass import VpassImporter
 from .importers.epos import EposImporter
 from .importers.nicos import NicosImporter
+from .importers.saison import SaisonImporter
 
 
 IMPORTER_TYPES: dict[
@@ -13,6 +14,7 @@ IMPORTER_TYPES: dict[
     "vpass": VpassImporter,
     "epos": EposImporter,
     "nicos": NicosImporter,
+    "saison": SaisonImporter,
 }
 
 
