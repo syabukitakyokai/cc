@@ -6,6 +6,7 @@ from .importers.nicos import NicosImporter
 from .importers.saison import SaisonImporter
 from .importers.jcb import JcbImporter
 from .importers.view import ViewImporter
+from .importers.paypay import PayPayImporter
 
 
 
@@ -20,6 +21,7 @@ IMPORTER_TYPES: dict[
     "saison": SaisonImporter,
     "jcb": JcbImporter,
     "view": ViewImporter,
+    "paypay": PayPayImporter,
 }
 
 
