@@ -2,6 +2,7 @@ from .importers.base import CardImporter
 from .importers.rakuten import RakutenImporter
 from .importers.vpass import VpassImporter
 from .importers.epos import EposImporter
+from .importers.nicos import NicosImporter
 
 
 IMPORTER_TYPES: dict[
@@ -11,6 +12,7 @@ IMPORTER_TYPES: dict[
     "rakuten": RakutenImporter,
     "vpass": VpassImporter,
     "epos": EposImporter,
+    "nicos": NicosImporter,
 }
 
 
