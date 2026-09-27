@@ -1,28 +1,33 @@
 import csv
-
-from datetime import datetime
 from pathlib import Path
 
 from ..models.card_usage_record import (
     CardUsageRecord,
 )
 
-from .base import CardImporter
+from .csv_base import CsvImporterBase
 
 
 class EposImporter(
-    CardImporter,
+    CsvImporterBase,
 ):
+    """
+    EPOSカード利用明細CSVを読み込む。
+    """
 
-    ENCODING = "cp932"
-
-    HEADER_ROW_INDEX = 1
+    ENCODINGS = (
+        "cp932",
+    )
 
     def read(
         self,
         file_path: Path,
     ) -> list:
-        self._validate_file(
+        self.validate_file(
+            file_path
+        )
+
+        encoding = self.detect_encoding(
             file_path
         )
 
@@ -33,7 +38,7 @@ class EposImporter(
         with open(
             file_path,
             mode="r",
-            encoding=self.ENCODING,
+            encoding=encoding,
             newline="",
         ) as file:
 
@@ -43,13 +48,13 @@ class EposImporter(
 
             #
             # 1行目
-            # 「月別ご利用明細 ～」
+            # 月別ご利用明細
             #
             next(reader)
 
             #
             # 2行目
-            # 列ヘッダ
+            # ヘッダ
             #
             next(reader)
 
@@ -69,33 +74,46 @@ class EposImporter(
                     continue
 
                 usage_date_text = (
-                    row[1].strip()
+                    self.get_value(
+                        row,
+                        1,
+                    )
                 )
 
                 if not usage_date_text:
                     continue
 
                 usage_date = (
-                    self._parse_usage_date(
-                        usage_date_text
+                    self.parse_date(
+                        usage_date_text,
+                        formats=(
+                            "%Y年%m月%d日",
+                        ),
+                        field_name="usage date",
                     )
                 )
 
                 merchant_name = (
-                    row[2].strip()
-                )
-
-                amount = (
-                    self._parse_amount(
-                        row[4]
+                    self.get_value(
+                        row,
+                        2,
                     )
                 )
 
-                #
-                # 「お支払開始月」
-                #
+                amount = (
+                    self.parse_amount(
+                        self.get_value(
+                            row,
+                            4,
+                        )
+                    )
+                )
+
                 payment_start_month = (
-                    row[6].strip()
+                    self.get_value(
+                        row,
+                        6,
+                    )
                 )
 
                 records.append(
@@ -110,63 +128,6 @@ class EposImporter(
                 )
 
         return records
-
-    @staticmethod
-    def _validate_file(
-        file_path: Path,
-    ) -> None:
-
-        if not file_path.is_file():
-
-            raise FileNotFoundError(
-                f"CSV file not found: "
-                f"{file_path}"
-            )
-
-    @staticmethod
-    def _parse_usage_date(
-        value: str,
-    ):
-
-        try:
-
-            return datetime.strptime(
-                value,
-                "%Y年%m月%d日",
-            ).date()
-
-        except ValueError as error:
-
-            raise ValueError(
-                f"Invalid usage date: "
-                f"{value}"
-            ) from error
-
-    @staticmethod
-    def _parse_amount(
-        value: str,
-    ) -> int:
-
-        normalized_value = (
-            value
-            .replace(",", "")
-            .replace("¥", "")
-            .replace("￥", "")
-            .strip()
-        )
-
-        try:
-
-            return int(
-                normalized_value
-            )
-
-        except ValueError as error:
-
-            raise ValueError(
-                f"Invalid amount: "
-                f"{value}"
-            ) from error
 
     @staticmethod
     def _is_summary_row(
