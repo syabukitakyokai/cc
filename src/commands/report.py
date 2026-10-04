@@ -75,7 +75,7 @@ def export_csv(
 
         writer.writerow(
             [
-                "Bank Amount",
+                "Bank",
                 "Card Amount",
                 "Fixed Amount",
                 "Total Amount",
