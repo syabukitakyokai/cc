@@ -34,13 +34,13 @@ def dispatch_command(
             )
 
         case "report":
-
             return report(
                 settings=settings,
                 database=database,
                 withdrawal_month=arguments.month,
+                csv_output=arguments.csv,
             )
-
+        
         case "import-csv":
 
             return import_csv(

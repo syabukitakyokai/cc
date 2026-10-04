@@ -79,6 +79,11 @@ def create_parser() -> argparse.ArgumentParser:
         required=True,
     )
 
+    report_parser.add_argument(
+        "--csv",
+        action="store_true",
+    )
+
     subparsers.add_parser(
         "import",
         help=(
